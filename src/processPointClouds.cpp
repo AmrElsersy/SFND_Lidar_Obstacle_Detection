@@ -112,25 +112,25 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 
     // TODO:: Fill in this function to find inliers for the cloud.
 
-    pcl::ModelCoefficients::Ptr coff ( new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
+    // pcl::ModelCoefficients::Ptr coff ( new pcl::ModelCoefficients);
+    // pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
 
-    typename pcl::SACSegmentation<PointT> *segmentation = new pcl::SACSegmentation<PointT>;
+    // typename pcl::SACSegmentation<PointT> *segmentation = new pcl::SACSegmentation<PointT>;
 
-    segmentation->setOptimizeCoefficients(true);
-    segmentation->setModelType(pcl::SACMODEL_PLANE);
-    segmentation->setMethodType(pcl::SAC_RANSAC);
-    segmentation->setMaxIterations(maxIterations);
-    segmentation->setDistanceThreshold(distanceThreshold);
+    // segmentation->setOptimizeCoefficients(true);
+    // segmentation->setModelType(pcl::SACMODEL_PLANE);
+    // segmentation->setMethodType(pcl::SAC_RANSAC);
+    // segmentation->setMaxIterations(maxIterations);
+    // segmentation->setDistanceThreshold(distanceThreshold);
 
-    segmentation->setInputCloud(cloud);
-    segmentation->segment(*inliers, *coff);
+    // segmentation->setInputCloud(cloud);
+    // segmentation->segment(*inliers, *coff);
 
     // // our segmentation method
-    // pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
-    // auto inliers_set = Ransac3D(cloud, maxIterations, distanceThreshold);
-    // // copy the set of indices to a vector
-    // inliers->indices.assign(inliers_set.begin(), inliers_set.end());
+    pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
+    auto inliers_set = Ransac3D(cloud, maxIterations, distanceThreshold);
+    // copy the set of indices to a vector
+    inliers->indices.assign(inliers_set.begin(), inliers_set.end());
 
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
