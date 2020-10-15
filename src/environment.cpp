@@ -91,7 +91,7 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointClouds<pcl::PointXYZI>* processPointCloud, const pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud)
 {
     // Filter
-    pcl::PointCloud<pcl::PointXYZI>::Ptr filterCloud = processPointCloud->FilterCloud(cloud, 0.2, Eigen::Vector4f(-30,-6,-3,1), Eigen::Vector4f(30,6, 10,1));
+    pcl::PointCloud<pcl::PointXYZI>::Ptr filterCloud = processPointCloud->FilterCloud(cloud, 0.1, Eigen::Vector4f(-30,-6,-3,1), Eigen::Vector4f(30,6, 10,1));
     // renderPointCloud(viewer, filterCloud, "filter");
 
     // Segmentation
@@ -100,8 +100,8 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
     auto obstaclesCloud = plane_and_obstacles.second;
 
     std::vector<Color> colors = {Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(1,1,0), Color(0,1,1)};
-    // auto clusters = processPointCloud->Clustering(obstaclesCloud, 0.5, 20, 1000);
-    auto clusters = processPointCloud->SersyClustering(obstaclesCloud, 0.5);
+    auto clusters = processPointCloud->Clustering(obstaclesCloud, 0.5, 20, 1000);
+    // auto clusters = processPointCloud->SersyClustering(obstaclesCloud, 0.5);
     
     for (int i = 0; i < clusters.size(); i++)
     {
@@ -112,8 +112,11 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
         renderBox(viewer, box, i, colors[0], 1);
     }
 
-    renderPointCloud(viewer, planeCloud, "cloud", Color(0,1,0));
-
+    // renderPointCloud(viewer, planeCloud, "cloud", Color(0,1,0));
+    renderPointCloud(viewer, cloud, "Cloud");
+    
+    // auto transform_cloud = processPointCloud->TransformPointCloud(cloud, -M_PI/4);
+    // renderPointCloud(viewer, transform_cloud, "ray2");
 }
 
 //setAngle: SWITCH CAMERA ANGLE {XY, TopDown, Side, FPS}

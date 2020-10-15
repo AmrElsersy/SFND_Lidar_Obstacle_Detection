@@ -112,25 +112,25 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 
     // TODO:: Fill in this function to find inliers for the cloud.
 
-    // pcl::ModelCoefficients::Ptr coff ( new pcl::ModelCoefficients);
-    // pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
-
-    // typename pcl::SACSegmentation<PointT> *segmentation = new pcl::SACSegmentation<PointT>;
-
-    // segmentation->setOptimizeCoefficients(true);
-    // segmentation->setModelType(pcl::SACMODEL_PLANE);
-    // segmentation->setMethodType(pcl::SAC_RANSAC);
-    // segmentation->setMaxIterations(maxIterations);
-    // segmentation->setDistanceThreshold(distanceThreshold);
-
-    // segmentation->setInputCloud(cloud);
-    // segmentation->segment(*inliers, *coff);
-
-    // our segmentation method
+    pcl::ModelCoefficients::Ptr coff ( new pcl::ModelCoefficients);
     pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
-    auto inliers_set = Ransac3D(cloud, maxIterations, distanceThreshold);
-    // copy the set of indices to a vector
-    inliers->indices.assign(inliers_set.begin(), inliers_set.end());
+
+    typename pcl::SACSegmentation<PointT> *segmentation = new pcl::SACSegmentation<PointT>;
+
+    segmentation->setOptimizeCoefficients(true);
+    segmentation->setModelType(pcl::SACMODEL_PLANE);
+    segmentation->setMethodType(pcl::SAC_RANSAC);
+    segmentation->setMaxIterations(maxIterations);
+    segmentation->setDistanceThreshold(distanceThreshold);
+
+    segmentation->setInputCloud(cloud);
+    segmentation->segment(*inliers, *coff);
+
+    // // our segmentation method
+    // pcl::PointIndices::Ptr inliers ( new pcl::PointIndices);
+    // auto inliers_set = Ransac3D(cloud, maxIterations, distanceThreshold);
+    // // copy the set of indices to a vector
+    // inliers->indices.assign(inliers_set.begin(), inliers_set.end());
 
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
@@ -280,6 +280,7 @@ BoxQ ProcessPointClouds<PointT>::BoundingBoxQ(typename pcl::PointCloud<PointT>::
     Eigen::Matrix4f projectionTransform(Eigen::Matrix4f::Identity());
     projectionTransform.block<3,3>(0,0) = eigenVectorsPCA.transpose();
     projectionTransform.block<3,1>(0,3) = -1.f * (projectionTransform.block<3,3>(0,0) * pcaCentroid.head<3>());
+
     typename pcl::PointCloud<PointT>::Ptr cloudPointsProjected (new pcl::PointCloud<PointT>);
     pcl::transformPointCloud(*cluster, *cloudPointsProjected, projectionTransform);
     // Get the minimum and maximum points of the transformed cloud.
@@ -289,11 +290,25 @@ BoxQ ProcessPointClouds<PointT>::BoundingBoxQ(typename pcl::PointCloud<PointT>::
     // Final transform
 
     //Quaternions are a way to do rotations
-    box.bboxQuaternion =  eigenVectorsPCA;
+    box.bboxQuaternion = eigenVectorsPCA;
+
+    // auto temp = eigenVectorsPCA;
+    // Eigen::Vector3f vecTemp;
+    // vecTemp.x() = 0;
+    // vecTemp.y() = 0;
+    // vecTemp.z() = 1;
+    
+    // // temp.block<3,1>(0,2) = vecTemp.head<3>();
+    // // box.bboxQuaternion =  temp;
+    // box.bboxQuaternion.matrix().block<3,1>(0,2) = vecTemp.head<3>();
+    // std::cout << box.bboxQuaternion.matrix() << std::endl;
+    // std::cout << "=================" << std::endl;
+
     // https://www.youtube.com/watch?v=d4EgbgTm0Bg
     // https://www.youtube.com/watch?v=zjMuIxRvygQ
     // https://eater.net/quaternions
     box.bboxTransform = eigenVectorsPCA * meanDiagonal + pcaCentroid.head<3>();
+
     box.cube_length = maxPoint.x-minPoint.x;
     box.cube_width = maxPoint.y-minPoint.y;
     box.cube_height = maxPoint.z-minPoint.z;
@@ -340,6 +355,7 @@ std::vector<boost::filesystem::path> ProcessPointClouds<PointT>::streamPcd(std::
 
 template<typename PointT>
 std::unordered_set<int> ProcessPointClouds<PointT>::Ransac3D(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
+
 {
 	std::unordered_set<int> inliersResult;
 	srand(time(NULL));
@@ -394,4 +410,41 @@ std::unordered_set<int> ProcessPointClouds<PointT>::Ransac3D(typename pcl::Point
 			inliersResult = inliers;
 	}
 	return inliersResult;
+}
+
+
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::TransformPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, int theta)
+{
+  /* Reminder: how transformation matrices work :
+
+           |-------> This column is the translation
+    | 1 0 0 x |  \
+    | 0 1 0 y |   }-> The identity 3x3 matrix (no rotation) on the left
+    | 0 0 1 z |  /
+    | 0 0 0 1 |    -> We do not use this line (and it has to stay 0,0,0,1)
+
+    x , y , z used for Translation in each direction
+
+    Note: We apply 2D Rotation in the ground plane (No Yaw nor pitch) so we don't move the k (Z basis)
+          and leave the 3rd Column as it is + leave the z coordinates of the first 2 basis un changed
+  */
+
+  Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+ 
+  // rotation
+  transform (0,0) = std::cos (theta);
+  transform (0,1) = - std::sin(theta);
+  transform (1,0) = std::sin (theta);
+  transform (1,1) = std::cos (theta);
+
+    // MAKE IT Configrable NOT Hard coded
+  // translation
+  transform (3,0) = 20; // translation 1 in x direction
+  transform (3,2) = 1; // translation 2 in z direction
+
+  typename pcl::PointCloud<PointT>::Ptr cloudTransformed (new pcl::PointCloud<PointT>);
+  pcl::transformPointCloud(*cloud, *cloudTransformed, transform);
+
+  return cloudTransformed;
 }

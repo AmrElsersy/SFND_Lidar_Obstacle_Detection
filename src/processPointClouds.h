@@ -53,5 +53,7 @@ public:
 
     std::unordered_set<int> Ransac3D(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol);
 
+    typename pcl::PointCloud<PointT>::Ptr TransformPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, int angle);
+
 };
 #endif /* PROCESSPOINTCLOUDS_H_ */
