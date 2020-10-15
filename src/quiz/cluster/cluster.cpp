@@ -13,12 +13,12 @@
 pcl::visualization::PCLVisualizer::Ptr initScene(Box window, int zoom)
 {
 	pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer ("2D Viewer"));
-	viewer->setBackgroundColor (0, 0, 0);
+	viewer->setBackgroundColor (1, 1, 1);
   	viewer->initCameraParameters();
   	viewer->setCameraPosition(0, 0, zoom, 0, 1, 0);
   	viewer->addCoordinateSystem (1.0);
 
-  	viewer->addCube(window.x_min, window.x_max, window.y_min, window.y_max, 0, 0, 1, 1, 1, "window");
+  	viewer->addCube(window.x_min, window.x_max, window.y_min, window.y_max, 0, 0, 0, 0, 0, "window");
   	return viewer;
 }
 
@@ -42,7 +42,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData(std::vector<std::vector<float>> p
   	return cloud;
 
 }
-
 
 void render2DTree(Node* node, pcl::visualization::PCLVisualizer::Ptr& viewer, Box window, int& iteration, uint depth=0)
 {
@@ -75,16 +74,74 @@ void render2DTree(Node* node, pcl::visualization::PCLVisualizer::Ptr& viewer, Bo
 
 }
 
-std::vector<std::vector<int>> euclideanCluster(const std::vector<std::vector<float>>& points, KdTree* tree, float distanceTol)
+
+class Clustring 
 {
+private:
+	float distTol;;
+	KdTree *kdTree;
+	std::vector<std::vector<float>> points;
+	std::vector<bool> visited;
+public:
+	void setDistanceTol(float d)
+	{
+		this->distTol = d;
+	}
+	void setTree(KdTree *tree)
+	{
+		this->kdTree = tree;
+	}
+	void setPoints(std::vector<std::vector<float>> _points)
+	{
+		this->points = _points;
 
-	// TODO: Fill out this function to return list of indices for each cluster
+		visited.resize(points.size());
+		for (int i = 0; i < visited.size(); i++)
+			visited[i] = false;
+	}
+	
+	void clusterNeighbours(std::vector<int> &cluster, int pointID)
+	{
+		// skip visited points (it belongs to a cluster)
+		if (visited[pointID])
+			return;
 
-	std::vector<std::vector<int>> clusters;
- 
-	return clusters;
+		// make point as visited
+		visited[pointID] = true;
+		// add point to cluster
+		cluster.push_back(pointID);
 
-}
+		// get all neighbours of the point and cluster each neighbour 
+		auto neighbours = kdTree->search(points[pointID], distTol);
+		for (auto neighbour : neighbours)
+		{
+			if (!visited[neighbour])
+				clusterNeighbours(cluster, neighbour);
+		}
+	}
+
+	std::vector<std::vector<int>> euclideanCluster()
+	{
+		// TODO: Fill out this function to return list of indices for each cluster
+		std::vector<std::vector<int>> clusters;
+
+		for (int i = 0; i < points.size(); i++)
+		{
+			if (visited[i])
+				continue;
+
+			std::vector<int> cluster;
+			clusterNeighbours(cluster, i);
+
+			clusters.push_back(cluster);
+		}
+	
+		return clusters;
+
+	}
+};
+
+
 
 int main ()
 {
@@ -120,8 +177,14 @@ int main ()
 
   	// Time segmentation process
   	auto startTime = std::chrono::steady_clock::now();
-  	//
-  	std::vector<std::vector<int>> clusters = euclideanCluster(points, tree, 3.0);
+
+  	// Clustring
+	Clustring clustring;
+	clustring.setDistanceTol(3.0);
+	clustring.setPoints(points);
+	clustring.setTree(tree);
+
+  	std::vector<std::vector<int>> clusters = clustring.euclideanCluster();
   	//
   	auto endTime = std::chrono::steady_clock::now();
   	auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
